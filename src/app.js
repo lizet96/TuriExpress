@@ -8,7 +8,6 @@ const bookingRoutes = require('./routes/booking');
 const app = express();
 app.use(bodyParser.json());
 
-// Rutas
 app.use('/api/auth', authRoutes);
 app.use('/api/services', serviceRoutes);
 app.use('/api/bookings', bookingRoutes);
