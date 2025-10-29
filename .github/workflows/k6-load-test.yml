@@ -1,27 +1,42 @@
-name: K6 Load Test
+name: K6 Load Testing Pipeline
 
 on:
   push:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
+  workflow_dispatch:  # Permite ejecución manual desde GitHub
 
 jobs:
-  k6-test:
+  k6-load-test:
     runs-on: ubuntu-latest
-
+    
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install K6
         run: |
-          sudo apt update
-          sudo apt install -y gnupg software-properties-common
-          curl -s https://dl.k6.io/key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/k6-archive-keyring.gpg
+          sudo gpg -k
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
           echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
-          sudo apt update
-          sudo apt install -y k6
+          sudo apt-get update
+          sudo apt-get install k6
 
-      - name: Run load test
-        run: k6 run k6/scripts/load_test.js
+      - name: Run K6 Load Test
+        run: k6 run k6/scripts/load_test.js --out json=test-results.json
+
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-test-results
+          path: |
+            test-results.json
+            summary.json
+
+      - name: Display Test Summary
+        if: always()
+        run: |
+          echo "=== K6 Load Test Summary ==="
+          cat summary.json || echo "No summary file generated"

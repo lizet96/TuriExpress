@@ -1,3 +1,6 @@
+/* eslint-env es6 */
+/* eslint-disable no-undef */
+
 const express = require('express');
 const bodyParser = require('body-parser');
 

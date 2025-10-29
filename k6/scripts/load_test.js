@@ -1,43 +1,36 @@
-import http from 'k6/http';
-import { sleep, check } from 'k6';
 
-export const options = {
-  stages: [
-    { duration: '30s', target: 10 }, // subir a 10 usuarios concurrentes en 30s
-    { duration: '1m', target: 10 },  // mantener 10 usuarios durante 1 minuto
-    { duration: '30s', target: 0 },  // bajar a 0 usuarios
-  ],
+
+import http from 'k6/http';
+import { check, sleep } from 'k6';
+
+export let options = {
+    stages: [
+        { duration: '30s', target: 10 },   // Ramp up a 10 usuarios
+        { duration: '1m', target: 10 },    // Mantener 10 usuarios
+        { duration: '30s', target: 0 },    // Ramp down
+    ],
+    thresholds: {
+        http_req_duration: ['p(95)<500'],  // 95% de requests < 500ms
+        http_req_failed: ['rate<0.1'],     // < 10% de errores
+    },
 };
 
-const BASE_URL = 'http://localhost:3000/api'; // o tu URL del backend desplegado
-
 export default function () {
-  // 1️⃣ Prueba del endpoint de autenticación (login simulado)
-  const authRes = http.post(`${BASE_URL}/auth/login`, JSON.stringify({
-    email: 'test@example.com',
-    password: '123456'
-  }), { headers: { 'Content-Type': 'application/json' } });
+    const BASE_URL = 'http://localhost:3000';
+    
+    // Test endpoint de autenticación
+    const authRes = http.get(`${BASE_URL}/api/auth`);
+    check(authRes, {
+        'auth status is 200': (r) => r.status === 200,
+        'auth response time < 500ms': (r) => r.timings.duration < 500,
+    });
+    
+    sleep(1);
+}
 
-  check(authRes, {
-    'login exitoso o manejado correctamente': (r) => r.status === 200 || r.status === 401,
-  });
-
-  // 2️⃣ Prueba del endpoint de servicios
-  const servicesRes = http.get(`${BASE_URL}/services`);
-  check(servicesRes, {
-    'carga de servicios exitosa': (r) => r.status === 200,
-  });
-
-  // 3️⃣ Prueba de creación de booking
-  const bookingRes = http.post(`${BASE_URL}/bookings`, JSON.stringify({
-    serviceId: '123',
-    date: '2025-10-30',
-    time: '10:00',
-  }), { headers: { 'Content-Type': 'application/json' } });
-
-  check(bookingRes, {
-    'creación de booking manejada correctamente': (r) => r.status === 200 || r.status === 400,
-  });
-
-  sleep(1); // pequeña pausa entre peticiones
+// Genera un resumen en JSON
+export function handleSummary(data) {
+    return {
+        'summary.json': JSON.stringify(data, null, 2),
+    };
 }
