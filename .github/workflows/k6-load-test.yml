@@ -5,7 +5,7 @@ on:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
-  workflow_dispatch:  # Permite ejecución manual desde GitHub
+  workflow_dispatch:
 
 jobs:
   k6-load-test:
@@ -14,6 +14,23 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Start server in background
+        run: |
+          npm start &
+          sleep 10
+          
+      - name: Wait for server to be ready
+        run: |
+          timeout 30 bash -c 'until curl -f http://localhost:3000/api/services; do sleep 2; done' || echo "Server not ready"
 
       - name: Install K6
         run: |
